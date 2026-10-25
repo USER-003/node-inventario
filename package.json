@@ -1,0 +1,17 @@
+{
+  "name": "node-inventario",
+  "version": "1.0.0",
+  "private": true,
+  "description": "App 2 (stack moderno): API REST de inventario con Express y PostgreSQL, desplegada en Kompilo",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "pg": "^8.13.1"
+  }
+}

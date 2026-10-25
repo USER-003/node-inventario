@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Inventario · API REST</title>
+  <style>
+    :root { --fondo: #0f172a; --panel: #1e293b; --texto: #e2e8f0; --suave: #94a3b8; --marca: #22c55e; --borde: #334155; --peligro: #f87171; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: var(--fondo); color: var(--texto); }
+    header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--borde); display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem; }
+    header b { font-size: 1.1rem; }
+    .suave { color: var(--suave); font-size: .85rem; }
+    main { max-width: 1000px; margin: 1.5rem auto; padding: 0 1rem; display: grid; gap: 1.25rem; }
+    .tarjetas { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .75rem; }
+    .tarjeta, .panel { background: var(--panel); border: 1px solid var(--borde); border-radius: 10px; padding: 1rem; }
+    .tarjeta span { display: block; font-size: 1.5rem; font-weight: 700; }
+    form { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .6rem; align-items: end; }
+    label { display: grid; gap: .25rem; font-size: .8rem; color: var(--suave); }
+    input { padding: .5rem .6rem; border-radius: 8px; border: 1px solid var(--borde); background: var(--fondo); color: var(--texto); font: inherit; width: 100%; }
+    button { padding: .55rem .9rem; border: 0; border-radius: 8px; background: var(--marca); color: #052e16; font: inherit; font-weight: 600; cursor: pointer; }
+    button.link { background: none; color: var(--marca); padding: 0; font-weight: 400; }
+    button.peligro { color: var(--peligro); }
+    .tabla { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: .55rem .6rem; border-bottom: 1px solid var(--borde); }
+    th { font-size: .75rem; text-transform: uppercase; color: var(--suave); }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .acciones { display: flex; gap: .8rem; }
+    pre { background: var(--fondo); padding: .8rem; border-radius: 8px; overflow-x: auto; font-size: .8rem; max-height: 220px; }
+    .error { color: var(--peligro); }
+  </style>
+</head>
+<body>
+<header>
+  <b>Inventario · API REST</b>
+  <span class="suave" id="meta">Node.js · Express · PostgreSQL</span>
+</header>
+<main>
+  <section class="tarjetas">
+    <div class="tarjeta"><span id="e-productos">–</span><small class="suave">productos</small></div>
+    <div class="tarjeta"><span id="e-unidades">–</span><small class="suave">unidades en stock</small></div>
+    <div class="tarjeta"><span id="e-valor">–</span><small class="suave">valor del inventario</small></div>
+    <div class="tarjeta"><span id="e-categorias">–</span><small class="suave">categorias</small></div>
+  </section>
+
+  <section class="panel">
+    <form id="form">
+      <input type="hidden" id="id">
+      <label>Nombre <input id="nombre" required maxlength="120"></label>
+      <label>Categoria <input id="categoria" maxlength="60" placeholder="General"></label>
+      <label>Precio <input id="precio" type="number" min="0" step="0.01" required></label>
+      <label>Stock <input id="stock" type="number" min="0" step="1" value="0"></label>
+      <button id="enviar">Crear</button>
+    </form>
+    <p class="error" id="error"></p>
+  </section>
+
+  <section class="panel tabla">
+    <table>
+      <thead><tr><th>ID</th><th>Nombre</th><th>Categoria</th><th>Precio</th><th>Stock</th><th></th></tr></thead>
+      <tbody id="filas"></tbody>
+    </table>
+  </section>
+
+  <section class="panel">
+    <div class="suave">Ultima respuesta de la API</div>
+    <pre id="respuesta">—</pre>
+  </section>
+</main>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const dinero = (n) => Number(n).toLocaleString('es', { style: 'currency', currency: 'USD' });
+
+  async function api(metodo, url, cuerpo) {
+    const r = await fetch(url, {
+      method: metodo,
+      headers: cuerpo ? { 'Content-Type': 'application/json' } : {},
+      body: cuerpo ? JSON.stringify(cuerpo) : undefined,
+    });
+    const datos = r.status === 204 ? null : await r.json();
+    $('respuesta').textContent = `${metodo} ${url} → ${r.status}\n` + (datos ? JSON.stringify(datos, null, 2) : '');
+    if (!r.ok) throw new Error(datos?.errores?.join(', ') || datos?.error || r.statusText);
+    return datos;
+  }
+
+  function celda(texto, clase) {
+    const td = document.createElement('td');
+    td.textContent = texto;
+    if (clase) td.className = clase;
+    return td;
+  }
+
+  async function cargar() {
+    const [lista, est, info] = await Promise.all([
+      fetch('/api/productos').then((r) => r.json()),
+      fetch('/api/estadisticas').then((r) => r.json()),
+      fetch('/api').then((r) => r.json()),
+    ]);
+    $('meta').textContent = `Node ${info.node} · Express · PostgreSQL · pod ${info.pod}`;
+    $('e-productos').textContent = est.productos;
+    $('e-unidades').textContent = est.unidades;
+    $('e-valor').textContent = dinero(est.valor_inventario);
+    $('e-categorias').textContent = est.categorias;
+
+    $('filas').replaceChildren(...lista.map((p) => {
+      const tr = document.createElement('tr');
+      tr.append(celda(p.id), celda(p.nombre), celda(p.categoria), celda(dinero(p.precio), 'num'), celda(p.stock, 'num'));
+      const acc = document.createElement('td');
+      acc.className = 'acciones';
+      const editar = Object.assign(document.createElement('button'), { className: 'link', textContent: 'Editar' });
+      editar.onclick = () => {
+        $('id').value = p.id; $('nombre').value = p.nombre; $('categoria').value = p.categoria;
+        $('precio').value = p.precio; $('stock').value = p.stock; $('enviar').textContent = 'Guardar';
+      };
+      const borrar = Object.assign(document.createElement('button'), { className: 'link peligro', textContent: 'Eliminar' });
+      borrar.onclick = async () => {
+        if (!confirm(`¿Eliminar "${p.nombre}"?`)) return;
+        await api('DELETE', `/api/productos/${p.id}`);
+        cargar();
+      };
+      acc.append(editar, borrar);
+      tr.append(acc);
+      return tr;
+    }));
+  }
+
+  $('form').onsubmit = async (ev) => {
+    ev.preventDefault();
+    $('error').textContent = '';
+    const cuerpo = {
+      nombre: $('nombre').value,
+      categoria: $('categoria').value || 'General',
+      precio: Number($('precio').value),
+      stock: Number($('stock').value || 0),
+    };
+    try {
+      const id = $('id').value;
+      if (id) await api('PUT', `/api/productos/${id}`, cuerpo);
+      else await api('POST', '/api/productos', cuerpo);
+      $('form').reset(); $('id').value = ''; $('enviar').textContent = 'Crear';
+      cargar();
+    } catch (e) {
+      $('error').textContent = e.message;
+    }
+  };
+
+  cargar().catch((e) => { $('error').textContent = 'No se pudo cargar: ' + e.message; });
+</script>
+</body>
+</html>
