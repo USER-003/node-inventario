@@ -97,7 +97,7 @@
       fetch('/api/estadisticas').then((r) => r.json()),
       fetch('/api').then((r) => r.json()),
     ]);
-    $('meta').textContent = `Node ${info.node} · Express · PostgreSQL · pod ${info.pod}`;
+    $('meta').textContent = `v${info.version} · Node ${info.node} · Express · PostgreSQL · pod ${info.pod}`;
     $('e-productos').textContent = est.productos;
     $('e-unidades').textContent = est.unidades;
     $('e-valor').textContent = dinero(est.valor_inventario);
