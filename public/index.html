@@ -33,7 +33,7 @@
 </head>
 <body>
 <header>
-  <b>Inventario · API REST</b>
+  <b>Inventario · API REST<small id="subtitulo" class="suave"></small></b>
   <span class="suave" id="meta">Node.js · Express · PostgreSQL</span>
 </header>
 <main>
@@ -97,6 +97,7 @@
       fetch('/api/estadisticas').then((r) => r.json()),
       fetch('/api').then((r) => r.json()),
     ]);
+    if (info.subtitulo) $('subtitulo').textContent = ` · ${info.subtitulo}`;
     $('meta').textContent = `v${info.version} · Node ${info.node} · Express · PostgreSQL · pod ${info.pod}`;
     $('e-productos').textContent = est.productos;
     $('e-unidades').textContent = est.unidades;

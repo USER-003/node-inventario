@@ -17,6 +17,7 @@ app.get('/api', (req, res) => {
     version: require('../package.json').version,
     pod: os.hostname(),
     node: process.version,
+    subtitulo: process.env.APP_SUBTITULO || null,
     endpoints: {
       'GET    /api/productos': 'Lista (filtros ?q= y ?categoria=)',
       'GET    /api/productos/:id': 'Obtiene uno',
